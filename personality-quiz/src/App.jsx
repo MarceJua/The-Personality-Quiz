@@ -1,9 +1,10 @@
-import React, { useState, useContext } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate , Route, Routes } from 'react-router-dom';
 import { UserProvider, UserContext } from './components/UserContext';
 import Header from './components/Header';
 import UserForm from './components/UserForm';
 import Question from './components/Question';
+import Result from './components/Result';
 import './App.css'
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
   const [element, setElement] = useState('');
   const [artwork, setArtwork] = useState(null);
   const { userName, setUserName } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const questions = [
     {
@@ -87,26 +89,56 @@ const elements = {
 };
 
 const handleAnswer = (answer) => {
-  setAnswers([...answers, elements[answer]]);
+  setAnswers((prevAnswers) => [...prevAnswers, answer]);
   if (currentQuestionIndex < questions.length - 1) {
-    setCurrentQuestionIndex(currentQuestionIndex + 1);
+    setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
   } else {
-    console.log('Quiz completed');
-    calculateResult();
+    const finalElement = determineElement([...answers, answer]);
+    setElement(finalElement);
+    navigate('/results');
   }
 };
 
-const calculateResult = () => {
-  const result = answers.reduce((acc, answer) => {
-    acc[answer] = (acc[answer] || 0) + 1;
-    return acc;
-  }, {});
+/*const handleUserFormSubmit = (name) => {
+  setUserName(name);
+  navigate('/quiz');
+};*/
 
-  const finalResult = Object.keys(result).reduce((a, b) => (result[a] > result[b] ? a : b));
-  setElement(finalResult);
-  console.log('Final Result:', finalResult);
-  // Logic to display the final result
+const fetchArtwork = async (keyword) => {
+  try {
+    const response = await fetch(
+      `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${keyword}`
+    );
+    const data = await response.json();
+    if (data.objectIDs && data.objectIDs.length > 0) {
+      const artworkId = data.objectIDs[0]; // Use the first artwork ID
+      const artworkResponse = await fetch(
+        `https://collectionapi.metmuseum.org/public/collection/v1/objects/${artworkId}`
+      );
+      const artworkData = await artworkResponse.json();
+      setArtwork(artworkData.primaryImageSmall); // Set artwork image
+    }
+  } catch (error) {
+    console.error('Error fetching artwork:', error);
+  }
 };
+
+const determineElement = (answers) => {
+  const counts = {};
+  answers.forEach((answer) => {
+    const element = elements[answer];
+    counts[element] = (counts[element] || 0) + 1;
+  });
+  return Object.keys(counts).reduce((a, b) => (counts[a] > counts[b] ? a : b));
+};
+
+useEffect(() => {
+  if (currentQuestionIndex === questions.length) {
+    const selectedElement = determineElement(answers);
+    setElement(selectedElement);
+    fetchArtwork(keywords[selectedElement]);
+  }
+}, [currentQuestionIndex]); // Trigger when all questions are answered
 
   return (
     <UserProvider>
@@ -123,7 +155,10 @@ const calculateResult = () => {
             />
           }
         />
-        <Route path="/results" element={<h1>Results for {userName} Coming Soon!</h1>} />
+        <Route
+          path="/results"
+          element={<Result element={element} artwork={artwork} />}
+        />
       </Routes>
     </UserProvider>
   );

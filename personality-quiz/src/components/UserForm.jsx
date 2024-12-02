@@ -1,19 +1,19 @@
 import React, { useState, useContext } from 'react';
 import { UserContext } from './UserContext';
+import { useNavigate } from 'react-router-dom';
 import './styles/UserForm.css';
 
 export default function UserForm() {
     const [inputName, setInputName] = useState('');
     const { setUserName } = useContext(UserContext);
+    const navigate = useNavigate();
+
   
-    function handleSubmit(e) {
-      e.preventDefault();
-      setUserName(inputName);  // Set the name in context
-      window.history.pushState({}, '', '/quiz');  // Change the URL without reloading the page
-      const navEvent = new PopStateEvent('popstate');
-      window.dispatchEvent(navEvent);  // Dispatch a navigation event
-      console.log(`UserName set: ${inputName}`);
-    }
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setUserName(inputName); // Set userName
+        navigate('/quiz'); // Navigate to quiz page
+      };
   
     return (
       <form onSubmit={handleSubmit} className="user-form">
