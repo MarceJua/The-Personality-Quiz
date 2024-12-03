@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate , Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { UserProvider, UserContext } from './components/UserContext';
 import Header from './components/Header';
 import UserForm from './components/UserForm';
@@ -99,27 +99,40 @@ const handleAnswer = (answer) => {
   }
 };
 
-/*const handleUserFormSubmit = (name) => {
+const handleUserFormSubmit = (name) => {
   setUserName(name);
   navigate('/quiz');
-};*/
+};
 
 const fetchArtwork = async (keyword) => {
   try {
-    const response = await fetch(
-      `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${keyword}`
-    );
+    const response = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?q=${keyword}`);
     const data = await response.json();
+
     if (data.objectIDs && data.objectIDs.length > 0) {
-      const artworkId = data.objectIDs[0]; // Use the first artwork ID
-      const artworkResponse = await fetch(
-        `https://collectionapi.metmuseum.org/public/collection/v1/objects/${artworkId}`
-      );
+      const randomIndex = Math.floor(Math.random() * data.objectIDs.length);
+      const objectID = data.objectIDs[randomIndex];
+      const artworkResponse = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectID}`);
       const artworkData = await artworkResponse.json();
-      setArtwork(artworkData.primaryImageSmall); // Set artwork image
+
+      if (artworkData.primaryImage) {
+        setArtwork(artworkData);
+        return;
+      }
     }
+
+    // Backup: Dog API
+    const dogResponse = await fetch('https://dog.ceo/api/breeds/image/random');
+    const dogData = await dogResponse.json();
+    setArtwork({
+      primaryImage: dogData.message,
+      title: ' ',
+      artistDisplayName: ' ',
+      objectDate: ' ',
+    });
   } catch (error) {
-    console.error('Error fetching artwork:', error);
+    console.error("Error fetching artwork:", error);
+    setArtwork(null);
   }
 };
 
@@ -138,27 +151,28 @@ useEffect(() => {
     setElement(selectedElement);
     fetchArtwork(keywords[selectedElement]);
   }
-}, [currentQuestionIndex]); // Trigger when all questions are answered
+}, [currentQuestionIndex]);
 
   return (
     <UserProvider>
       <Header />
       <Routes>
-        <Route path="/" element={<UserForm />} />
+        <Route path="/" element={<UserForm onSubmit={handleUserFormSubmit} />} />
         <Route
           path="/quiz"
           element={
-            <Question
-              question={questions[currentQuestionIndex].question}
-              options={questions[currentQuestionIndex].options}
-              onAnswer={handleAnswer}
-            />
+            currentQuestionIndex < questions.length ? (
+              <Question
+                question={questions[currentQuestionIndex].question}
+                options={questions[currentQuestionIndex].options}
+                onAnswer={handleAnswer}
+              />
+            ) : (
+              <Result element={element} artwork={artwork} />
+            )
           }
         />
-        <Route
-          path="/results"
-          element={<Result element={element} artwork={artwork} />}
-        />
+        <Route path="/results" element={<Result element={element} artwork={artwork} />} />
       </Routes>
     </UserProvider>
   );

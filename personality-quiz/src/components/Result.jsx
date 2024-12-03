@@ -1,22 +1,45 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { UserContext } from './UserContext';
+import './styles/Result.css';
 
-export default function Results({ element, artwork }) {
-  const { userName } = useContext(UserContext); // Access name from context
+export default function Result({ element, artwork }) {
+  const { userName } = useContext(UserContext);
+  const [fallbackArtwork, setFallbackArtwork] = useState(null);
+
+  useEffect(() => {
+    if (!artwork) {
+      fetchFallbackImage();
+    }
+  }, [artwork]);
+
+  const fetchFallbackImage = async () => {
+    try {
+      const response = await fetch('https://dog.ceo/api/breeds/image/random');
+      const data = await response.json();
+      setFallbackArtwork({
+        primaryImage: data.message,
+        title: ' ',
+        artistDisplayName: ' ',
+        objectDate: ' ',
+      });
+    } catch (error) {
+      console.error('Error fetching fallback image:', error);
+    }
+  };
+
+  const displayedArtwork = artwork || fallbackArtwork;
 
   return (
     <div className="results-container">
       <p>
-        <strong>{userName}</strong>, your element is: <strong>{element}</strong>
+        <strong>{userName}</strong>, your personality is: <strong>{element}</strong>
       </p>
-      {artwork ? (
+      {displayedArtwork ? (
         <div className="artwork">
-          <h2>{artwork.title}</h2>
-          <img src={artwork} alt={element} />
-          <p>Explore more about your element!</p>
+          <img src={displayedArtwork.primaryImage} alt={displayedArtwork.title} />
         </div>
       ) : (
-        <p>No artwork found.</p>
+        <p>Loading artwork...</p>
       )}
     </div>
   );
